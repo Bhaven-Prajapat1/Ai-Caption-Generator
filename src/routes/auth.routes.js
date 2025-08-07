@@ -5,18 +5,19 @@ const {
   getUser,
   logoutUser,
 } = require("../controllers/auth.controller");
+
 const router = express.Router();
 
-// Register User
+// Register user
 router.post("/register", registerUser);
 
-// Login User
+// Login user
 router.post("/login", loginUser);
 
-// Get User
-router.get("/getuser", getUser);
+// Get user
+router.get("/user", getUser);
 
-// Logout User
+// Logout user
 router.get("/logout", logoutUser);
 
 module.exports = router;

@@ -1,68 +1,72 @@
-const express = require("express");
-const userModel = require("../models/user.model");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
-
-// Jwt Token
-
-const createToken = (userId) => {
-  return jwt.sign({ userId }, process.env.SECRET_KEY);
-};
-
+const userModel = require("../models/user.model");
 const registerUser = async (req, res) => {
-  const { email, password } = req.body;
-  const isUser = await userModel.findOne({
-    email,
-  });
+  try {
+    const { username, password } = req.body;
+    const ifUserExist = await userModel.findOne({
+      username,
+    });
+    if (ifUserExist)
+      return res.status(409).json({
+        message: "User Already Exist...",
+      });
 
-  if (isUser)
-    return res.status(401).json({
-      message: "User already exist",
+    const user = await userModel.create({
+      username,
+      password: await bcrypt.hash(password, 10),
     });
 
-  const user = await userModel.create({
-    email,
-    password: await bcrypt.hash(password, 10),
-  });
-  const token = createToken(user._id);
-  res.cookie("authToken", token);
-  res.status(201).json({ message: "User Created Succefully", user });
+    const token = jwt.sign({ id: user._id }, process.env.SECRET_KEY);
+    res.cookie("authToken", token);
+    res.status(200).json({ message: "User Created Sucsessfully" });
+  } catch (err) {
+    return res.status(401).json({ message: "Server error" });
+  }
 };
 const loginUser = async (req, res) => {
-  const { email, password } = req.body;
-  const user = await userModel.findOne({
-    email,
-  });
-
-  if (!user)
-    return res.status(400).json({
-      message: "User Not Found",
+  try {
+    const { username, password } = req.body;
+    const user = await userModel.findOne({
+      username,
     });
+    if (!user)
+      return res.status(409).json({
+        message: "User Not Exist...",
+      });
 
-  const isPasswordValid = await bcrypt.compare(password, user.password);
-
-  if (!isPasswordValid) {
-    return res.status(400).json({
-      message: "Invalid Password",
-    });
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (isPasswordValid) {
+      const token = jwt.sign({ id: user._id }, process.env.SECRET_KEY);
+      res.cookie("authToken", token);
+      res.status(200).json({ message: "User Login Sucsessfully" });
+    }
+  } catch (err) {
+    return res.status(401).json({ message: "Server error" });
   }
-  const token = createToken(user._id);
-  res.cookie("authToken", token);
-  res.status(200).json({ message: "User Login Succefully", user });
 };
 const getUser = async (req, res) => {
-  const token = req.cookies.authToken;
-  if (!token) return res.status(401).json({ message: "Invalid Token" });
+  try {
+    const token = req.cookies.authToken;
+    if (!token) return res.status(403).json({ message: "Invalid token!" });
+    const decoded = jwt.verify(token, process.env.SECRET_KEY);
 
-  const decoded = jwt.verify(token, process.env.SECRET_KEY);
+    const user = await userModel.findById(decoded.id).select("-password");
 
-  const user = await userModel.findById(decoded.userId).select("-password");
-
-  res.status(200).json({ message: "User fetched successfully", user });
+    if (!user) return res.status(404).json({ message: "User not found" });
+    res.status(200).json({ message: "User found successfully...", user });
+  } catch (err) {
+    console.log("Error fetching user:", err);
+    return res.status(403).json({ message: "Invalid or expired token" });
+  }
 };
 const logoutUser = (req, res) => {
-  res.clearCookie("authToken");
-  res.status(200).json({ message: "User Logout Succefully" });
+  res.clearCookie(authToken);
+  res.json({ message: "User logged out" });
 };
-
-module.exports = { registerUser, loginUser, getUser, logoutUser };
+module.exports = {
+  registerUser,
+  loginUser,
+  getUser,
+  logoutUser,
+};

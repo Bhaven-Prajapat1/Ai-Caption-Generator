@@ -1,12 +1,9 @@
-const connnectDb = require("./src/db/db");
-const authRoutes = require("./src/routes/auth.routes");
-const app = require("./src/app");
 require("dotenv").config();
+const connectDb = require("./src/db/db");
+const app = require("./src/app");
 
-connnectDb();
 
-app.use("/auth/api", authRoutes);
-
+connectDb()
 app.listen(3000, () => {
-  console.log("Server is running on 3000");
+  console.log("Server is running..");
 });
